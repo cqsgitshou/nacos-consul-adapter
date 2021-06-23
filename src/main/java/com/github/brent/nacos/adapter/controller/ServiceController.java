@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.github.brent.nacos.adapter.data.ServiceHealth;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -45,6 +46,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.github.brent.nacos.adapter.service.RegistrationService;
 
 import rx.Single;
+
+import static java.util.stream.Collectors.toList;
 
 @Controller
 public class ServiceController {
@@ -77,6 +80,30 @@ public class ServiceController {
 			return createResponseEntity(item.getItem(), item.getChangeIndex());
 		});
 	}
+
+	@GetMapping(value = "/v1/health/service/{appName}", produces = MediaType.APPLICATION_JSON_VALUE)
+	public Single<ResponseEntity<List<ServiceHealth>>> getHealthService(@PathVariable("appName") String appName,
+																		@RequestParam(name = QUERY_PARAM_WAIT, required = false) String wait,
+																		@RequestParam(name = QUERY_PARAM_INDEX, required = false) Long index) {
+		Assert.isTrue(appName != null, "service name can not be null");
+		return registrationService.getService(appName).map(item -> {
+			return createResponseEntity(item.getItem(), item.getChangeIndex());
+		});
+	}
+
+//	@GetMapping(value = "/v1/health/service/{appName}", produces = MediaType.APPLICATION_JSON_VALUE)
+//	public Single<ResponseEntity<List<ServiceHealth>>> getServiceHealth(@PathVariable("appName") String appName,
+//																		@RequestParam(name = QUERY_PARAM_WAIT , required = false) String wait,
+//																		@RequestParam(name = QUERY_PARAM_INDEX , required = false) Long index) {
+//		Assert.isTrue(appName != null, "service name can not be null");
+//		return registrationService.getService(appName, getWaitMillis(wait), index)
+//				.map(item -> {
+//					List<ServiceHealth> services = item.getItem().stream()
+//							.map(instanceInfoMapper::mapToHealth).collect(toList());
+//					return createResponseEntity(services, item.getChangeIndex());
+//				});
+//	}
+
 
 	private MultiValueMap<String, String> createHeaders(long index) {
 		MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();

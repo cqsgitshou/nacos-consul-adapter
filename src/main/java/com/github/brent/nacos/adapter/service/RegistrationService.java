@@ -33,6 +33,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import com.alibaba.fastjson.JSON;
+import com.github.brent.nacos.adapter.data.ServiceHealth;
+import com.google.common.collect.Lists;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
@@ -98,7 +103,63 @@ public class RegistrationService {
 		});
 	}
 
+	public Single<ChangeItem<List<ServiceHealth>>> getService(String appName) {
+		return returnDeferred(0, null, () -> {
+			List<ServiceInstance> instances = discoveryClient.getInstances(appName);
+			System.out.println(JSON.toJSONString(instances));
+			List<ServiceHealth> list = new ArrayList<ServiceHealth>();
+
+			if (instances == null) {
+				return Collections.emptyList();
+			} else {
+				Set<ServiceInstance> instSet = new HashSet<ServiceInstance>(instances);
+				for (ServiceInstance instance : instSet) {
+
+
+					list.add(mapToHealth(instance));
+				}
+
+
+				System.out.println("========================================================================================");
+				System.out.println(JSON.toJSONString(list));
+				return list;
+			}
+
+		});
+	}
+
+	public ServiceHealth mapToHealth(ServiceInstance instanceInfo) {
+
+		ServiceHealth.Node node = ServiceHealth.Node.builder()
+				.name(instanceInfo.getServiceId())
+				.address(instanceInfo.getHost())
+				.meta(instanceInfo.getMetadata())
+				.build();
+		ServiceHealth.Service service = ServiceHealth.Service.builder()
+				.id(instanceInfo.getServiceId())
+				.name(instanceInfo.getServiceId())
+				.tags(Lists.newArrayList())
+				.address(instanceInfo.getHost())
+				.meta(instanceInfo.getMetadata())
+				.port(instanceInfo.getPort())
+				.build();
+		ServiceHealth.Check check = ServiceHealth.Check.builder()
+				.node(instanceInfo.getServiceId())
+				.checkID("service:" + instanceInfo.getServiceId())
+				.name("Service '" + instanceInfo.getServiceId() + "' check")
+				.status("UP")
+				.build();
+		return ServiceHealth.builder()
+				.node(node)
+				.service(service)
+				.checks(Collections.singletonList(check))
+				.build();
+	}
+
+
 	private <T> Single<ChangeItem<T>> returnDeferred(long waitMillis, Long index, Supplier<T> fn) {
 		return Single.just(new ChangeItem<>(fn.get(), new Date().getTime()));
 	}
+
+
 }
